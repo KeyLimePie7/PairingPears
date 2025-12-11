@@ -9,14 +9,19 @@ import {
   Typography,
   IconButton,
   Box,
-  Divider
+  Divider,
+  TextField
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useDroppable } from '@dnd-kit/core';
 import { groupsAtom, developersAtom } from '../store';
 import AddGroupModal from './AddGroupModal';
 
-function GroupCard({ group, groupIndex, onDeleteGroup, onRemoveMember }) {
+function GroupCard({ group, groupIndex, onDeleteGroup, onRemoveMember, onUpdateGroupName }) {
+  const [isEditing, setIsEditing] = useState(false); // state to track editing group name
+  const [editedName, setEditedName] = useState(group.name); // state to track current group name while editing
+
+
   const { setNodeRef, isOver } = useDroppable({
     id: `group-${groupIndex}`,
     data: {
@@ -24,13 +29,56 @@ function GroupCard({ group, groupIndex, onDeleteGroup, onRemoveMember }) {
     }
   });
 
+  const handleFinishEditing = () => {
+    if (editedName.trim() !== '') {
+      onUpdateGroupName(groupIndex, editedName.trim());
+    } else {
+      // If empty, revert to original name
+      setEditedName(group.name);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleFinishEditing();
+    } else if (e.key === 'Escape') {
+      // Cancel editing and revert
+      setEditedName(group.name);
+      setIsEditing(false);
+    }
+  };
+
   return (
     <Card variant="outlined">
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h6" component="div">
-            {group.name}
-          </Typography>
+          {isEditing ? (
+            <TextField
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={handleFinishEditing}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              size="small"
+              variant="standard"
+              sx={{ flexGrow: 1, mr: 1 }}
+            />
+          ) : (
+            <Typography 
+              variant="h6" 
+              component="div"
+              onClick={() => setIsEditing(true)}  // Click to edit
+              sx={{ 
+                cursor: 'pointer',  // Show it's clickable
+                '&:hover': {  // Hover effect
+                  color: 'primary.main'
+                }
+              }}
+            >
+              {group.name}
+            </Typography>
+          )}
           <IconButton 
             size="small"
             onClick={onDeleteGroup}
@@ -101,6 +149,12 @@ function GroupsCard() {
     updatedGroups[groupIndex].members = updatedGroups[groupIndex].members.filter(
       (_, index) => index !== memberIndex
     );
+    setGroups(updatedGroups);
+  };
+
+  const handleUpdateGroupName = (groupIndex, newName) => {
+    const updatedGroups = [...groups];
+    updatedGroups[groupIndex].name = newName;
     setGroups(updatedGroups);
   };
 
@@ -212,6 +266,7 @@ function GroupsCard() {
                   groupIndex={groupIndex}
                   onDeleteGroup={() => handleDeleteGroup(groupIndex)}
                   onRemoveMember={(memberIndex) => handleRemoveMember(groupIndex, memberIndex)}
+                  onUpdateGroupName={handleUpdateGroupName}
                 />
               </Grid>
             ))}
